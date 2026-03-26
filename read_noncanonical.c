@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
     int dataIdx = 0;
     int escaped = FALSE;
     unsigned char a_rcv = 0, c_rcv = 0, bcc1_rcv = 0;
+    int expectedNs = 0;
     state = START;
     STOP = FALSE;
 
@@ -172,15 +173,22 @@ int main(int argc, char *argv[])
                     for (int j = 0; j < dataIdx - 1; j++) bcc2 ^= dataBuffer[j];
 
                     if (bcc2 == dataBuffer[dataIdx - 1]) {
-                        printf("I frame OK! Data: ");
-                        for (int j = 0; j < dataIdx - 1; j++) printf("%02X ", dataBuffer[j]);
-                        printf("\n");
+                        int receivedNs = (c_rcv == 0x00) ? 0 : 1;
 
-                        // Send RR
+                        // Send RR regardless (ACK either way)
                         unsigned char Nr = (c_rcv == 0x00) ? 1 : 0;
                         unsigned char C_RR = (Nr == 1) ? 0x85 : 0x05;
                         unsigned char rr_frame[5] = {F, A_SET, C_RR, A_SET ^ C_RR, F};
                         write(fd, rr_frame, 5);
+
+                        if (receivedNs != expectedNs) {
+                            printf("Duplicate I frame (Ns=%d), discarding\n", receivedNs);
+                        } else {
+                            printf("I frame OK! Data: ");
+                            for (int j = 0; j < dataIdx - 1; j++) printf("%02X ", dataBuffer[j]);
+                            printf("\n");
+                            expectedNs = !expectedNs;  // advance only on new frame
+                        }
                         printf("RR(Nr=%d) sent\n", Nr);
                     } else {
                         printf("BCC2 error! Sending REJ\n");
@@ -190,7 +198,6 @@ int main(int argc, char *argv[])
                         write(fd, rej_frame, 5);
                     }
                     state = START;
-                    STOP = TRUE;  // remove this line when handling multiple frames
                 }
                 else dataBuffer[dataIdx++] = buf;
                 break;
