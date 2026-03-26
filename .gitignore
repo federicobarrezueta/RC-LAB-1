@@ -1,0 +1,8 @@
+# Build artifacts
+*.o
+write_noncanonical
+read_noncanonical
+cable
+
+# Documentation (large, available online)
+*.pdf

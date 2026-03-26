@@ -1,0 +1,56 @@
+{
+  "name": "Computer Networks Lab",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  // Mount your workspace files into the container
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+
+  // Mount your host ~/.claude config so Claude Code stays authenticated
+  "mounts": [
+      "source=${localEnv:HOME}/.gitconfig,target=/home/dev/.gitconfig,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.ssh,target=/home/dev/.ssh,type=bind,consistency=cached,readonly"
+  ],
+
+  // Pass your Anthropic key from host environment (add it to your shell profile)
+  // export ANTHROPIC_API_KEY=sk-ant-...
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
+
+  // Run as our non-root user
+  "remoteUser": "dev",
+
+  // Serial port access: expose host serial devices into the container.
+  // Uncomment and adjust paths to match your actual devices, e.g.:
+  //   /dev/ttyS0, /dev/ttyUSB0, /dev/ttyUSB1 ...
+  // "runArgs": ["--device=/dev/ttyUSB0", "--device=/dev/ttyUSB1"],
+
+  // VSCode extensions auto-installed in the container
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",           // C/C++ IntelliSense & debugging
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",        // CMake support
+        "marus25.cortex-debug",         // Low-level debugging
+        "formulahendry.code-runner",    // Quick run snippets
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+        "C_Cpp.default.cStandard": "c11",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+
+  // Forward ports if your protocol implementation uses any
+  "forwardPorts": [],
+
+  // After container creation: remind user to authenticate Claude Code
+  "postCreateCommand": "echo '✅ Container ready! Run: claude login   (or set ANTHROPIC_API_KEY)'"
+}
