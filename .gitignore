@@ -3,6 +3,18 @@
 write_noncanonical
 read_noncanonical
 cable
+transmitter
+receiver
+link_layer
+application_layer
 
 # Documentation (large, available online)
 *.pdf
+
+#Claude configs
+CLAUDE.md
+
+receiver
+transmitter
+cable
+

@@ -277,7 +277,14 @@ int llread(unsigned char *packet) {
         // Destuffing — only in data collection phase
         if (state == BCC_OK) {
             if (buf == ESC && !escaped) { escaped = TRUE; continue; }
-            if (escaped) { buf ^= 0x20; escaped = FALSE; }
+            if (escaped) {
+                buf ^= 0x20;
+                escaped = FALSE;
+                // store directly — never treat a destuffed byte as a frame delimiter
+                if (dataIdx < MAX_PAYLOAD_SIZE + 1)
+                    dataBuffer[dataIdx++] = buf;
+                continue;
+            }
         }
 
         switch (state) {
