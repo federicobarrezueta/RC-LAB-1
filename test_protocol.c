@@ -28,31 +28,31 @@
 #include <unistd.h>
 
 // ── Binaries / ports ─────────────────────────────────────────────────────────
-#define CABLE_BIN   "./cable"
-#define TX_BIN      "./transmitter"
-#define RX_BIN      "./receiver"
-#define TX_PORT     "/dev/ttyS10"      // cable's TX-side PTY
-#define RX_PORT     "/dev/ttyS11"      // cable's RX-side PTY
-#define TEST_FILE   "penguin.gif"      // file to transfer
-#define OUT_FILE    "/tmp/rx_test.gif" // where receiver saves the file
+#define CABLE_BIN "./cable"
+#define TX_BIN "./transmitter"
+#define RX_BIN "./receiver"
+#define TX_PORT "/dev/ttyS10"       // cable's TX-side PTY
+#define RX_PORT "/dev/ttyS11"       // cable's RX-side PTY
+#define TEST_FILE "penguin.gif"     // file to transfer
+#define OUT_FILE "/tmp/rx_test.gif" // where receiver saves the file
 
 // ── Protocol constants ───────────────────────────────────────────────────────
 // Baud rate must match what transmitter.c / receiver.c use (B9600 = 9600 bps).
 // Serial framing is 8-N-1, so each byte occupies 10 bit-times on the wire.
-#define BAUD_BPS    9600.0
+#define BAUD_BPS 9600.0
 
 // I-frame byte count (before stuffing), for a 128-byte AL payload:
 //   FLAG(1) A(1) C(1) BCC1(1)  +  [C_al(1) L2(1) L1(1) data(128)]  +  BCC2(1)  +  FLAG(1)
 //   = 4 + 131 + 1 + 1 = 137 bytes
-#define FRAME_BYTES  137
+#define FRAME_BYTES 137
 // T_frame (seconds): time to put the frame on the wire
-#define T_FRAME_S   (FRAME_BYTES * 10.0 / BAUD_BPS)   // ≈ 0.1427 s
+#define T_FRAME_S (FRAME_BYTES * 10.0 / BAUD_BPS) // ≈ 0.1427 s
 
 // ── Sweep parameters ─────────────────────────────────────────────────────────
 // BER values passed to cable (per-bit error probability).
 // cable.c warns accuracy degrades above 0.01, so we stay at or below that.
 static const double ber_vals[] = {0.0, 0.0001, 0.001, 0.005, 0.01};
-#define N_BER  5
+#define N_BER 5
 
 // Propagation delays (µs) chosen to give useful a = T_prop / T_frame values.
 // T_FRAME_S ≈ 0.1427 s
@@ -61,21 +61,21 @@ static const double ber_vals[] = {0.0, 0.0001, 0.001, 0.005, 0.01};
 //   a ≈ 0.50 → prop ≈ 71 354 µs
 //   a ≈ 1.00 → prop ≈142 708 µs
 static const long prop_us_vals[] = {0, 1427, 14271, 71354, 142708};
-#define N_PROP  5
+#define N_PROP 5
 
 // Number of repeated runs per (BER, prop) configuration (results are averaged).
-#define N_REPEATS  3
+#define N_REPEATS 3
 
 // Maximum wall-clock seconds we wait for a single transmitter run.
-#define TX_TIMEOUT_S  120
+#define TX_TIMEOUT_S 120
 
 // ── Output files ─────────────────────────────────────────────────────────────
-#define RESULTS_CSV     "efficiency_results.csv"
-#define GNUPLOT_SCRIPT  "plot_efficiency.gnuplot"
+#define RESULTS_CSV "efficiency_results.csv"
+#define GNUPLOT_SCRIPT "plot_efficiency.gnuplot"
 
 // ── Globals ───────────────────────────────────────────────────────────────────
-static pid_t cable_pid       = -1;
-static int   cable_stdin_fd  = -1;  // write-end of pipe → cable's stdin
+static pid_t cable_pid = -1;
+static int cable_stdin_fd = -1; // write-end of pipe → cable's stdin
 
 // ── Utility functions ─────────────────────────────────────────────────────────
 
@@ -89,7 +89,7 @@ static void cable_cmd(const char *fmt, ...)
     va_end(ap);
     strcat(buf, "\n");
     write(cable_stdin_fd, buf, strlen(buf));
-    usleep(200000);  // 200 ms: let cable process the command
+    usleep(200000); // 200 ms: let cable process the command
 }
 
 // Return the size of a file in bytes, or -1 on error.
@@ -102,8 +102,7 @@ static long file_size(const char *path)
 // Elapsed seconds between two CLOCK_MONOTONIC samples.
 static double elapsed_s(const struct timespec *a, const struct timespec *b)
 {
-    return (b->tv_sec  - a->tv_sec)
-         + (b->tv_nsec - a->tv_nsec) * 1e-9;
+    return (b->tv_sec - a->tv_sec) + (b->tv_nsec - a->tv_nsec) * 1e-9;
 }
 
 // waitpid with a wall-clock timeout; kills the child if it takes too long.
@@ -112,13 +111,14 @@ static int wait_with_timeout(pid_t pid, int timeout_s)
 {
     time_t deadline = time(NULL) + timeout_s;
     int status;
-    while (time(NULL) < deadline) {
+    while (time(NULL) < deadline)
+    {
         pid_t r = waitpid(pid, &status, WNOHANG);
         if (r == pid)
             return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         if (r < 0)
             return -1;
-        usleep(100000);  // poll every 100 ms
+        usleep(100000); // poll every 100 ms
     }
     fprintf(stderr, "  [timeout] killing pid %d\n", (int)pid);
     kill(pid, SIGKILL);
@@ -136,12 +136,21 @@ static int wait_with_timeout(pid_t pid, int timeout_s)
 static int start_cable(void)
 {
     int in_pipe[2];
-    if (pipe(in_pipe) < 0) { perror("pipe"); return -1; }
+    if (pipe(in_pipe) < 0)
+    {
+        perror("pipe");
+        return -1;
+    }
 
     cable_pid = fork();
-    if (cable_pid < 0) { perror("fork"); return -1; }
+    if (cable_pid < 0)
+    {
+        perror("fork");
+        return -1;
+    }
 
-    if (cable_pid == 0) {           // child: become cable
+    if (cable_pid == 0)
+    { // child: become cable
         close(in_pipe[1]);
         dup2(in_pipe[0], STDIN_FILENO);
         // Suppress cable's verbose output during automated testing.
@@ -162,12 +171,14 @@ static int start_cable(void)
     printf("Waiting for cable to initialise (socat setup ~2 s)...\n");
     struct stat st;
     time_t deadline = time(NULL) + 20;
-    while (time(NULL) < deadline) {
-        if (stat(TX_PORT, &st) == 0 && stat(RX_PORT, &st) == 0) {
+    while (time(NULL) < deadline)
+    {
+        if (stat(TX_PORT, &st) == 0 && stat(RX_PORT, &st) == 0)
+        {
             printf("Cable ready.\n\n");
             return 0;
         }
-        usleep(200000);  // poll every 200 ms
+        usleep(200000); // poll every 200 ms
     }
 
     fprintf(stderr, "Timed out waiting for %s / %s\n", TX_PORT, RX_PORT);
@@ -180,13 +191,15 @@ static int start_cable(void)
 // Send "quit" to cable (triggers its own cleanup: killall socat), then wait.
 static void stop_cable(void)
 {
-    if (cable_stdin_fd >= 0) {
+    if (cable_stdin_fd >= 0)
+    {
         cable_cmd("quit");
         usleep(500000);
         close(cable_stdin_fd);
         cable_stdin_fd = -1;
     }
-    if (cable_pid > 0) {
+    if (cable_pid > 0)
+    {
         waitpid(cable_pid, NULL, 0);
         cable_pid = -1;
     }
@@ -199,13 +212,14 @@ static void stop_cable(void)
 static double run_transfer(double ber, long prop_us)
 {
     // Apply cable settings
-    cable_cmd("ber %f",  ber);
+    cable_cmd("ber %f", ber);
     cable_cmd("prop %ld", prop_us);
-    usleep(100000);  // brief settle time
+    usleep(100000); // brief settle time
 
     // Start receiver in background (redirect output to /dev/null)
     pid_t rx_pid = fork();
-    if (rx_pid == 0) {
+    if (rx_pid == 0)
+    {
         int null_fd = open("/dev/null", O_WRONLY);
         dup2(null_fd, STDOUT_FILENO);
         dup2(null_fd, STDERR_FILENO);
@@ -215,14 +229,15 @@ static double run_transfer(double ber, long prop_us)
     }
 
     // Give receiver time to open the port and call llopen (wait for SET).
-    usleep(300000);  // 300 ms
+    usleep(300000); // 300 ms
 
     // Start transmitter and record wall-clock time around it.
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
     pid_t tx_pid = fork();
-    if (tx_pid == 0) {
+    if (tx_pid == 0)
+    {
         int null_fd = open("/dev/null", O_WRONLY);
         dup2(null_fd, STDOUT_FILENO);
         dup2(null_fd, STDERR_FILENO);
@@ -234,9 +249,10 @@ static double run_transfer(double ber, long prop_us)
     int tx_ret = wait_with_timeout(tx_pid, TX_TIMEOUT_S);
     clock_gettime(CLOCK_MONOTONIC, &t1);
 
-    wait_with_timeout(rx_pid, 10);  // receiver finishes shortly after
+    wait_with_timeout(rx_pid, 10); // receiver finishes shortly after
 
-    if (tx_ret != 0) {
+    if (tx_ret != 0)
+    {
         fprintf(stderr, "  Transfer failed (ret=%d)\n", tx_ret);
         return -1.0;
     }
@@ -247,7 +263,8 @@ static double run_transfer(double ber, long prop_us)
 int main(void)
 {
     long fsize = file_size(TEST_FILE);
-    if (fsize <= 0) {
+    if (fsize <= 0)
+    {
         fprintf(stderr, "Cannot stat '%s'. Make sure it exists.\n", TEST_FILE);
         return 1;
     }
@@ -263,14 +280,21 @@ int main(void)
         return 1;
 
     FILE *csv = fopen(RESULTS_CSV, "w");
-    if (!csv) { perror("fopen " RESULTS_CSV); stop_cable(); return 1; }
+    if (!csv)
+    {
+        perror("fopen " RESULTS_CSV);
+        stop_cable();
+        return 1;
+    }
     fprintf(csv, "BER,prop_delay_us,a,FER,S_measured,S_theoretical\n");
 
-    for (int i = 0; i < N_BER; i++) {
-        for (int j = 0; j < N_PROP; j++) {
-            double ber     = ber_vals[i];
-            long   prop_us = prop_us_vals[j];
-            double a       = (prop_us * 1e-6) / T_FRAME_S;
+    for (int i = 0; i < N_BER; i++)
+    {
+        for (int j = 0; j < N_PROP; j++)
+        {
+            double ber = ber_vals[i];
+            long prop_us = prop_us_vals[j];
+            double a = (prop_us * 1e-6) / T_FRAME_S;
 
             // FER: probability that at least one of the FRAME_BITS data bits
             // is flipped.  cable corrupts each bit independently with prob BER,
@@ -285,17 +309,21 @@ int main(void)
                    ber, prop_us, a, fer);
 
             double sum_S = 0.0;
-            int    valid = 0;
+            int valid = 0;
 
-            for (int r = 0; r < N_REPEATS; r++) {
+            for (int r = 0; r < N_REPEATS; r++)
+            {
                 double elapsed = run_transfer(ber, prop_us);
-                if (elapsed > 0.0) {
+                if (elapsed > 0.0)
+                {
                     // S = R / C  where R = file_bits / elapsed
                     double S = file_bits / (elapsed * BAUD_BPS);
                     printf("  run %d: %.3f s → S = %.4f\n", r + 1, elapsed, S);
                     sum_S += S;
                     valid++;
-                } else {
+                }
+                else
+                {
                     printf("  run %d: FAILED\n", r + 1);
                 }
             }
@@ -314,33 +342,38 @@ int main(void)
     // ── Gnuplot script ────────────────────────────────────────────────────────
     // Generates one S-vs-a curve per BER value (measured + theoretical).
     FILE *gp = fopen(GNUPLOT_SCRIPT, "w");
-    if (!gp) { perror("fopen gnuplot"); return 0; }
+    if (!gp)
+    {
+        perror("fopen gnuplot");
+        return 0;
+    }
 
     fprintf(gp,
-        "# Run with: gnuplot -persistent %s\n"
-        "set datafile separator ','\n"
-        "set title 'Stop-and-Wait Efficiency S vs propagation factor a'\n"
-        "set xlabel 'a = T_{prop} / T_{frame}'\n"
-        "set ylabel 'Efficiency S'\n"
-        "set yrange [0:1.1]\n"
-        "set xrange [-0.05:1.1]\n"
-        "set key top right\n"
-        "set grid\n"
-        "set style data linespoints\n\n"
-        "# CSV columns: BER, prop_us, a, FER, S_meas, S_theo\n",
-        GNUPLOT_SCRIPT);
+            "# Run with: gnuplot -persistent %s\n"
+            "set datafile separator ','\n"
+            "set title 'Stop-and-Wait Efficiency S vs propagation factor a'\n"
+            "set xlabel 'a = T_{prop} / T_{frame}'\n"
+            "set ylabel 'Efficiency S'\n"
+            "set yrange [0:1.1]\n"
+            "set xrange [-0.05:1.1]\n"
+            "set key top right\n"
+            "set grid\n"
+            "set style data linespoints\n\n"
+            "# CSV columns: BER, prop_us, a, FER, S_meas, S_theo\n",
+            GNUPLOT_SCRIPT);
 
     // One plot command per BER value, filtering rows with ternary operator.
     fprintf(gp, "plot \\\n");
-    for (int i = 0; i < N_BER; i++) {
-        const char *sep   = (i < N_BER - 1) ? ", \\" : "";
+    for (int i = 0; i < N_BER; i++)
+    {
+        const char *sep = (i < N_BER - 1) ? ", \\" : "";
         // Measured (col 5) and theoretical (col 6), filtered by BER (col 1)
         fprintf(gp,
-            "  '%s' using ($1==%.4f ? $3 : 1/0):5 title 'meas BER=%.4f', \\\n"
-            "  '%s' using ($1==%.4f ? $3 : 1/0):6 with lines dashtype 2 title 'theo BER=%.4f'%s\n",
-            RESULTS_CSV, ber_vals[i], ber_vals[i],
-            RESULTS_CSV, ber_vals[i], ber_vals[i],
-            sep);
+                "  '%s' using ($1==%.4f ? $3 : 1/0):5 title 'meas BER=%.4f', \\\n"
+                "  '%s' using ($1==%.4f ? $3 : 1/0):6 with lines dashtype 2 title 'theo BER=%.4f'%s\n",
+                RESULTS_CSV, ber_vals[i], ber_vals[i],
+                RESULTS_CSV, ber_vals[i], ber_vals[i],
+                sep);
     }
     fclose(gp);
     printf("Gnuplot script : %s\n", GNUPLOT_SCRIPT);
