@@ -165,3 +165,5 @@ make clean    # clean objects and binaries
 - [ ] Data packets: correct fragmentation and reassembly
 - [ ] File integrity after transfer
 - [ ] Performance evaluation: efficiency S vs FER and propagation delay
+
+## All checks done
