@@ -385,10 +385,10 @@ int llread(unsigned char *packet)
             {
                 buf ^= 0x20;
                 escaped = FALSE;
-                // store directly — never treat a destuffed byte as a frame delimiter
+                // Store destuffed byte — never treat it as a frame delimiter
                 if (dataIdx < MAX_PAYLOAD_SIZE + 1)
                     dataBuffer[dataIdx++] = buf;
-                continue;
+                break; // skip the FLAG check below
             }
         }
 
