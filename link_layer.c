@@ -159,10 +159,6 @@ int llopen(LinkLayer params)
         alarmCount = 0;
         alarmEnabled = FALSE;
 
-        // State machine vars declared outside the loop so they persist across iterations
-        int state = START;
-        unsigned char a_rcv = 0, c_rcv = 0;
-
         while (alarmCount <= ll.numTransmissions)
         {
             if (alarmEnabled == FALSE)
@@ -171,12 +167,16 @@ int llopen(LinkLayer params)
                 printf("SET sent (attempt %d)\n", alarmCount);
                 alarm(ll.timeout);
                 alarmEnabled = TRUE;
-                state = START;
             }
 
+            // Read one byte and feed into receiveSUFrame inline
             unsigned char buf;
             if (read(fd, &buf, 1) <= 0)
                 continue;
+
+            // Mini state machine for UA reception inside the retry loop
+            static int state = START;
+            static unsigned char a_rcv = 0, c_rcv = 0;
 
             switch (state)
             {
@@ -245,7 +245,7 @@ int llopen(LinkLayer params)
 int llwrite(const unsigned char *buf, int bufSize)
 {
     // Build I frame
-    unsigned char frame[(bufSize * 2) + 7]; // +4 header +2 max stuffed BCC2 +1 trailing FLAG
+    unsigned char frame[(bufSize * 2) + 6];
     int i = 0;
 
     unsigned char C = Ns ? C_I1 : C_I0;
@@ -385,10 +385,10 @@ int llread(unsigned char *packet)
             {
                 buf ^= 0x20;
                 escaped = FALSE;
-                // Store destuffed byte — never treat it as a frame delimiter
+                // store directly — never treat a destuffed byte as a frame delimiter
                 if (dataIdx < MAX_PAYLOAD_SIZE + 1)
                     dataBuffer[dataIdx++] = buf;
-                continue; // go back to top of loop — skip the switch/FLAG check
+                continue;
             }
         }
 
