@@ -136,8 +136,10 @@ int llopen(LinkLayer params)
 
     struct termios newtio;
     memset(&newtio, 0, sizeof(newtio));
-    newtio.c_cflag = ll.baudRate | CS8 | CLOCAL | CREAD;
-    newtio.c_iflag = IGNPAR;
+    newtio.c_cflag = CS8 | CLOCAL | CREAD;
+    cfsetispeed(&newtio, ll.baudRate);
+    cfsetospeed(&newtio, ll.baudRate);
+    newtio.c_iflag = 0;  // no input processing — don't drop bytes on framing errors
     newtio.c_oflag = 0;
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 1;
